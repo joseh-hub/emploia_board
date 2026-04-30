@@ -117,6 +117,10 @@ export function ClienteDetailModal({
                     <FolderKanban className="h-4 w-4" />
                     Projetos
                   </TabsTrigger>
+                  <TabsTrigger value="checklist" className="gap-2">
+                    <ListChecks className="h-4 w-4" />
+                    Plano de Sucesso
+                  </TabsTrigger>
                   <TabsTrigger value="comments" className="gap-2">
                     <MessageSquare className="h-4 w-4" />
                     Comentários
