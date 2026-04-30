@@ -19,11 +19,13 @@ import {
   Users,
   FileText,
   MessageSquare,
-  FolderKanban
+  FolderKanban,
+  ListChecks
 } from "lucide-react";
 import { DescriptionEditor } from "./detail/DescriptionEditor";
 import { CommentsSection } from "./detail/CommentsSection";
 import { ClienteProjetosTab } from "./detail/ClienteProjetosTab";
+import { ClienteChecklistSection } from "./detail/ClienteChecklistSection";
 
 interface ClienteDetailModalProps {
   cliente: Cliente | null;
@@ -115,6 +117,10 @@ export function ClienteDetailModal({
                     <FolderKanban className="h-4 w-4" />
                     Projetos
                   </TabsTrigger>
+                  <TabsTrigger value="checklist" className="gap-2">
+                    <ListChecks className="h-4 w-4" />
+                    Plano de Sucesso
+                  </TabsTrigger>
                   <TabsTrigger value="comments" className="gap-2">
                     <MessageSquare className="h-4 w-4" />
                     Comentários
@@ -203,6 +209,10 @@ export function ClienteDetailModal({
 
                   <TabsContent value="projetos" className="mt-0">
                     <ClienteProjetosTab clienteId={cliente.id} />
+                  </TabsContent>
+
+                  <TabsContent value="checklist" className="mt-0">
+                    <ClienteChecklistSection clienteId={cliente.id} />
                   </TabsContent>
 
                   <TabsContent value="comments" className="mt-0">
