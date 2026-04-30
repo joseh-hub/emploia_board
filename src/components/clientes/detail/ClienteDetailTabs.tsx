@@ -153,6 +153,10 @@ export function ClienteDetailTabs({ cliente }: ClienteDetailTabsProps) {
         />
       </TabsContent>
 
+      <TabsContent value="checklist" className="mt-4">
+        <ClienteChecklistSection clienteId={cliente.id} />
+      </TabsContent>
+
       <TabsContent value="comments" className="mt-4">
         <CommentsSection clienteId={cliente.id} />
       </TabsContent>
