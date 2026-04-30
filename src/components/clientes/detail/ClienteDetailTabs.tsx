@@ -28,10 +28,14 @@ export function ClienteDetailTabs({ cliente }: ClienteDetailTabsProps) {
 
   return (
     <Tabs defaultValue="details" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="details" className="gap-2">
           <FileText className="h-3 w-3" />
           Detalhes
+        </TabsTrigger>
+        <TabsTrigger value="checklist" className="gap-2">
+          <ListChecks className="h-3 w-3" />
+          Checklist
         </TabsTrigger>
         <TabsTrigger value="comments" className="gap-2">
           <MessageSquare className="h-3 w-3" />
