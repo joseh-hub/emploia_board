@@ -322,6 +322,7 @@ export type Database = {
           executado_em: string | null
           id: string
           nota: string | null
+          opcional: boolean
           position: number
           texto: string
           updated_at: string
@@ -337,6 +338,7 @@ export type Database = {
           executado_em?: string | null
           id?: string
           nota?: string | null
+          opcional?: boolean
           position?: number
           texto: string
           updated_at?: string
@@ -352,6 +354,7 @@ export type Database = {
           executado_em?: string | null
           id?: string
           nota?: string | null
+          opcional?: boolean
           position?: number
           texto?: string
           updated_at?: string
@@ -362,10 +365,12 @@ export type Database = {
         Row: {
           cadencia: string
           categoria: string
+          cluster: string
           created_at: string
           dias_offset: number
           id: string
           ocorrencias: number
+          opcional: boolean
           position: number
           texto: string
           updated_at: string
@@ -373,10 +378,12 @@ export type Database = {
         Insert: {
           cadencia?: string
           categoria?: string
+          cluster?: string
           created_at?: string
           dias_offset?: number
           id?: string
           ocorrencias?: number
+          opcional?: boolean
           position?: number
           texto: string
           updated_at?: string
@@ -384,10 +391,12 @@ export type Database = {
         Update: {
           cadencia?: string
           categoria?: string
+          cluster?: string
           created_at?: string
           dias_offset?: number
           id?: string
           ocorrencias?: number
+          opcional?: boolean
           position?: number
           texto?: string
           updated_at?: string
