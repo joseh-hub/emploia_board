@@ -1,0 +1,16 @@
+project_id = "imfxqgmkjpkrcjwqndxp"
+
+[functions.execute-automation]
+verify_jwt = false
+
+[functions.webhook-inbound]
+verify_jwt = false
+
+[functions.send-webhook-message]
+verify_jwt = false
+
+[functions.refresh-projetos-overview]
+verify_jwt = false
+
+[functions.generate-client-comms]
+verify_jwt = false

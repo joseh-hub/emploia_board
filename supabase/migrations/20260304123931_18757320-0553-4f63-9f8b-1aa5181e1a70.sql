@@ -1,0 +1,1 @@
+ALTER TABLE public.projetos_overview ADD COLUMN board_stage text;

@@ -1,0 +1,1 @@
+ALTER TABLE task_templates ADD COLUMN due_days_offset INTEGER DEFAULT NULL;
