@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -28,6 +29,9 @@ import {
 } from "@/components/ui/select";
 import { Cliente, useCreateCliente, useUpdateCliente } from "@/hooks/useClientes";
 import { useBoardColumns } from "@/hooks/useBoardColumns";
+import { useApplyDefaultChecklistToCliente } from "@/hooks/useClienteChecklist";
+import { Switch } from "@/components/ui/switch";
+import { ListChecks } from "lucide-react";
 
 const clienteSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100, "Nome muito longo"),
@@ -65,6 +69,8 @@ export function ClienteFormModal({
   const { data: columns } = useBoardColumns();
   const createCliente = useCreateCliente();
   const updateCliente = useUpdateCliente();
+  const applyDefaultChecklist = useApplyDefaultChecklistToCliente();
+  const [applyChecklist, setApplyChecklist] = useState(true);
 
   const form = useForm<ClienteFormData>({
     resolver: zodResolver(clienteSchema),
@@ -133,7 +139,7 @@ export function ClienteFormModal({
           hs_inadimplencia: data.hs_inadimplencia,
         });
       } else {
-        await createCliente.mutateAsync({
+        const created = await createCliente.mutateAsync({
           name: data.name,
           cnpj: data.cnpj,
           Tipo: data.Tipo,
@@ -146,6 +152,14 @@ export function ClienteFormModal({
           hs_suporte: data.hs_suporte,
           hs_inadimplencia: data.hs_inadimplencia,
         });
+        if (applyChecklist && created?.id) {
+          // Best-effort: don't block creation if template is empty
+          try {
+            await applyDefaultChecklist.mutateAsync(created.id);
+          } catch {
+            /* template vazio ou erro silencioso */
+          }
+        }
       }
       onOpenChange(false);
     } catch (error) {
@@ -376,6 +390,29 @@ export function ClienteFormModal({
                 />
               </div>
             </div>
+
+            {!isEditing && (
+              <div className="border-t pt-4">
+                <div className="flex items-start justify-between gap-4 rounded-lg border bg-muted/30 p-3">
+                  <div className="flex items-start gap-2.5 flex-1">
+                    <ListChecks className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="space-y-0.5">
+                      <Label htmlFor="apply-checklist" className="text-sm font-medium cursor-pointer">
+                        Aplicar checklist padrão de CS
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Cria automaticamente o checklist do processo de Customer Success neste cliente.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="apply-checklist"
+                    checked={applyChecklist}
+                    onCheckedChange={setApplyChecklist}
+                  />
+                </div>
+              </div>
+            )}
 
             <DialogFooter>
               <Button
