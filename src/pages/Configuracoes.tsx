@@ -275,6 +275,24 @@ export default function Configuracoes() {
             </CardContent>
           </Card>
 
+          {/* Cliente Checklist Template Card */}
+          <Card className="border-0 shadow-clickup-sm">
+            <CardHeader className="flex flex-row items-start gap-4">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <ListChecks className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <CardTitle className="text-base font-semibold">Checklist Padrão de Clientes</CardTitle>
+                <CardDescription className="text-sm">
+                  Processo de CS aplicado automaticamente a cada novo cliente
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ClienteChecklistTemplateConfig />
+            </CardContent>
+          </Card>
+
           {/* Members Card */}
           <Card className="border-0 shadow-clickup-sm">
             <CardHeader className="flex flex-row items-start gap-4">
