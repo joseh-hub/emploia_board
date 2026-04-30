@@ -12,9 +12,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useTarefaTags, useCreateTarefaTag, useDeleteTarefaTag, useUpdateTarefaTag } from "@/hooks/useTarefaTags";
 import {
-  LogOut, User, Info, Tag, Users, Bell,
+  LogOut, User, Info, Tag, Users, Bell, ListChecks,
   Plus, Trash2, Pencil, Check, X,
 } from "lucide-react";
+import { ClienteChecklistTemplateConfig } from "@/components/clientes/ClienteChecklistTemplateConfig";
 import { cn } from "@/lib/utils";
 
 const TAG_COLORS = [
