@@ -1,11 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import type { Cadencia, Categoria } from "@/lib/checklistDates";
 
 export interface ClienteChecklistTemplateItem {
   id: string;
   texto: string;
   position: number;
+  dias_offset: number;
+  cadencia: Cadencia;
+  ocorrencias: number;
+  categoria: Categoria;
   created_at: string;
   updated_at: string;
 }
@@ -27,16 +32,27 @@ export function useClienteChecklistTemplate() {
 export function useAddTemplateItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (texto: string) => {
+    mutationFn: async (input: {
+      texto: string;
+      dias_offset?: number;
+      cadencia?: Cadencia;
+      ocorrencias?: number;
+      categoria?: Categoria;
+    }) => {
       const { data: existing } = await supabase
         .from("cliente_checklist_template")
         .select("position")
         .order("position", { ascending: false })
         .limit(1);
       const nextPos = (existing?.[0]?.position ?? -1) + 1;
-      const { error } = await supabase
-        .from("cliente_checklist_template")
-        .insert({ texto, position: nextPos });
+      const { error } = await supabase.from("cliente_checklist_template").insert({
+        texto: input.texto,
+        position: nextPos,
+        dias_offset: input.dias_offset ?? 0,
+        cadencia: input.cadencia ?? "unica",
+        ocorrencias: input.ocorrencias ?? 1,
+        categoria: input.categoria ?? "outro",
+      });
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["cliente-checklist-template"] }),
@@ -48,10 +64,18 @@ export function useAddTemplateItem() {
 export function useUpdateTemplateItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, texto }: { id: string; texto: string }) => {
+    mutationFn: async (input: {
+      id: string;
+      texto?: string;
+      dias_offset?: number;
+      cadencia?: Cadencia;
+      ocorrencias?: number;
+      categoria?: Categoria;
+    }) => {
+      const { id, ...patch } = input;
       const { error } = await supabase
         .from("cliente_checklist_template")
-        .update({ texto })
+        .update(patch)
         .eq("id", id);
       if (error) throw error;
     },
@@ -78,7 +102,6 @@ export function useReorderTemplateItems() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (items: { id: string; position: number }[]) => {
-      // Sequential updates (small N expected)
       for (const item of items) {
         const { error } = await supabase
           .from("cliente_checklist_template")
