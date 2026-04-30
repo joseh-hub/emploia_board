@@ -93,16 +93,26 @@ export function ClienteChecklistTemplateConfig() {
 
       {/* Add row */}
       <div className="border rounded-lg p-3 bg-card space-y-2">
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-          Novo item
+        <div className="flex items-center justify-between">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+            Novo item
+          </div>
+          <span className="text-[10px] text-muted-foreground">
+            {draft.cadencia === "unica"
+              ? "Item único — acontece uma vez"
+              : `Recorrente — ${draft.ocorrencias}× a cada ${CADENCIAS[draft.cadencia].label.toLowerCase()}`}
+          </span>
         </div>
         <div className="grid grid-cols-12 gap-2">
           <Input
-            placeholder="Nome do item (ex.: Reunião Semanal)"
+            placeholder="Nome do item (ex.: Kickoff, QBR, Reunião Semanal)"
             value={draft.texto}
             onChange={(e) => setDraft({ ...draft, texto: e.target.value })}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            className="col-span-12 md:col-span-5 h-9 text-sm"
+            className={cn(
+              "h-9 text-sm",
+              draft.cadencia === "unica" ? "col-span-12 md:col-span-6" : "col-span-12 md:col-span-4"
+            )}
           />
           <Select
             value={draft.categoria}
@@ -127,7 +137,11 @@ export function ClienteChecklistTemplateConfig() {
               setDraft({ ...draft, dias_offset: parseInt(e.target.value) || 0 })
             }
             className="col-span-3 md:col-span-1 h-9 text-sm"
-            title="Prazo em dias após entrada"
+            title={
+              draft.cadencia === "unica"
+                ? "Dias após entrada do cliente"
+                : "Dias até a 1ª ocorrência"
+            }
           />
           <Select
             value={draft.cadencia}
@@ -135,7 +149,7 @@ export function ClienteChecklistTemplateConfig() {
               setDraft({
                 ...draft,
                 cadencia: v as Cadencia,
-                ocorrencias: v === "unica" ? 1 : draft.ocorrencias || 4,
+                ocorrencias: v === "unica" ? 1 : draft.ocorrencias > 1 ? draft.ocorrencias : 4,
               })
             }
           >
@@ -150,17 +164,19 @@ export function ClienteChecklistTemplateConfig() {
               ))}
             </SelectContent>
           </Select>
-          <Input
-            type="number"
-            min={1}
-            disabled={draft.cadencia === "unica"}
-            value={draft.ocorrencias}
-            onChange={(e) =>
-              setDraft({ ...draft, ocorrencias: parseInt(e.target.value) || 1 })
-            }
-            className="col-span-3 md:col-span-1 h-9 text-sm"
-            title="Quantidade de ocorrências"
-          />
+          {draft.cadencia !== "unica" && (
+            <Input
+              type="number"
+              min={1}
+              value={draft.ocorrencias}
+              onChange={(e) =>
+                setDraft({ ...draft, ocorrencias: parseInt(e.target.value) || 1 })
+              }
+              className="col-span-3 md:col-span-2 h-9 text-sm"
+              title="Quantas ocorrências gerar"
+              placeholder="Qtd"
+            />
+          )}
           <Button
             size="sm"
             onClick={handleAdd}
@@ -171,11 +187,13 @@ export function ClienteChecklistTemplateConfig() {
           </Button>
         </div>
         <div className="text-[10px] text-muted-foreground grid grid-cols-12 gap-2 px-1">
-          <span className="col-span-12 md:col-span-5">Nome</span>
+          <span className={draft.cadencia === "unica" ? "col-span-12 md:col-span-6" : "col-span-12 md:col-span-4"}>
+            Nome
+          </span>
           <span className="col-span-6 md:col-span-2">Categoria</span>
           <span className="col-span-3 md:col-span-1">Dias</span>
           <span className="col-span-3 md:col-span-2">Cadência</span>
-          <span className="col-span-3 md:col-span-1">Qtd</span>
+          {draft.cadencia !== "unica" && <span className="col-span-3 md:col-span-2">Qtd</span>}
           <span className="col-span-3 md:col-span-1">Add</span>
         </div>
       </div>
