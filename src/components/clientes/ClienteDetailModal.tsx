@@ -19,11 +19,13 @@ import {
   Users,
   FileText,
   MessageSquare,
-  FolderKanban
+  FolderKanban,
+  ListChecks
 } from "lucide-react";
 import { DescriptionEditor } from "./detail/DescriptionEditor";
 import { CommentsSection } from "./detail/CommentsSection";
 import { ClienteProjetosTab } from "./detail/ClienteProjetosTab";
+import { ClienteChecklistSection } from "./detail/ClienteChecklistSection";
 
 interface ClienteDetailModalProps {
   cliente: Cliente | null;
