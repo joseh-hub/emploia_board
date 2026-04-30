@@ -183,65 +183,40 @@ export function ClienteChecklistSection({ clienteId }: Props) {
               </>
             ) : (
               <>
-                Será aplicado o template do{" "}
+                Sugerido:{" "}
                 <strong className="text-foreground">{CLUSTER_LABELS[suggestedCluster]}</strong>{" "}
-                (Tipo: {tipo}).
+                (Tipo: {tipo}). Você pode escolher outro cluster.
               </>
             )}
           </p>
           <div className="flex flex-wrap gap-2 items-center">
-            {tipoMissing ? (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    size="sm"
-                    className="gap-1.5 h-8 bg-[#3F1757] hover:bg-[#4d1c6c] text-white"
-                    disabled={applyDefault.isPending}
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Escolher cluster e aplicar
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-64 space-y-2">
-                  <p className="text-xs font-medium">Qual cluster aplicar?</p>
-                  <Select
-                    value={pickerCluster}
-                    onValueChange={(v) => setPickerCluster(v as Cluster)}
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CLUSTERS.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {CLUSTER_LABELS[c]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    className="w-full h-8"
-                    onClick={() =>
-                      applyDefault.mutate({ clienteId, cluster: pickerCluster })
-                    }
-                    disabled={applyDefault.isPending}
-                  >
-                    Aplicar {CLUSTER_LABELS[pickerCluster]}
-                  </Button>
-                </PopoverContent>
-              </Popover>
-            ) : (
-              <Button
-                size="sm"
-                className="gap-1.5 h-8 bg-[#3F1757] hover:bg-[#4d1c6c] text-white"
-                onClick={() => applyDefault.mutate(clienteId)}
-                disabled={applyDefault.isPending}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Aplicar {CLUSTER_LABELS[suggestedCluster]}
-              </Button>
-            )}
+            <Select
+              value={pickerCluster}
+              onValueChange={(v) => setPickerCluster(v as Cluster)}
+            >
+              <SelectTrigger className="h-8 text-sm w-[180px] bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CLUSTERS.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {CLUSTER_LABELS[c]}
+                    {c === suggestedCluster && !tipoMissing ? " (sugerido)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              className="gap-1.5 h-8 bg-[#3F1757] hover:bg-[#4d1c6c] text-white"
+              onClick={() =>
+                applyDefault.mutate({ clienteId, cluster: pickerCluster })
+              }
+              disabled={applyDefault.isPending}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Aplicar {CLUSTER_LABELS[pickerCluster]}
+            </Button>
             <Button
               size="sm"
               variant="outline"
