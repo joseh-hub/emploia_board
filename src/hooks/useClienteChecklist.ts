@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { expandTemplate, type Cadencia, type Categoria } from "@/lib/checklistDates";
+import {
+  expandTemplate,
+  clusterFromTipo,
+  type Cadencia,
+  type Categoria,
+  type Cluster,
+} from "@/lib/checklistDates";
 
 export interface ClienteChecklistItem {
   id: string;
@@ -13,6 +19,7 @@ export interface ClienteChecklistItem {
   nota: string | null;
   executado_em: string | null;
   categoria: Categoria;
+  opcional: boolean;
   completed_at: string | null;
   completed_by: string | null;
   created_at: string;
