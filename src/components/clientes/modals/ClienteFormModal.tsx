@@ -68,6 +68,8 @@ export function ClienteFormModal({
   const { data: columns } = useBoardColumns();
   const createCliente = useCreateCliente();
   const updateCliente = useUpdateCliente();
+  const applyDefaultChecklist = useApplyDefaultChecklistToCliente();
+  const [applyChecklist, setApplyChecklist] = useState(true);
 
   const form = useForm<ClienteFormData>({
     resolver: zodResolver(clienteSchema),
