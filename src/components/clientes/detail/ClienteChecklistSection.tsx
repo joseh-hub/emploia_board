@@ -1,106 +1,151 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Trash2, Plus, Pencil, Check, X, ListChecks, Sparkles } from "lucide-react";
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ListChecks,
+  Sparkles,
+  Plus,
+  X,
+  AlertTriangle,
+  CalendarDays,
+  CalendarClock,
+  CheckCircle2,
+} from "lucide-react";
+import { differenceInCalendarDays, parseISO, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
   useClienteChecklist,
   useAddClienteChecklistItem,
-  useToggleClienteChecklistItem,
-  useUpdateClienteChecklistItem,
-  useDeleteClienteChecklistItem,
   useApplyDefaultChecklistToCliente,
-  ClienteChecklistItem,
 } from "@/hooks/useClienteChecklist";
+import { CATEGORIAS, type Categoria, getDueStatus } from "@/lib/checklistDates";
+import { ClienteChecklistItemRow } from "./ClienteChecklistItemRow";
 
 interface Props {
   clienteId: number;
 }
 
+type Filter = "todos" | "atrasados" | "semana" | "proximos" | "concluidos";
+
 export function ClienteChecklistSection({ clienteId }: Props) {
   const { data: items = [], isLoading } = useClienteChecklist(clienteId);
   const addItem = useAddClienteChecklistItem();
-  const toggleItem = useToggleClienteChecklistItem();
-  const updateItem = useUpdateClienteChecklistItem();
-  const deleteItem = useDeleteClienteChecklistItem();
   const applyDefault = useApplyDefaultChecklistToCliente();
 
-  const [newText, setNewText] = useState("");
+  const [filter, setFilter] = useState<Filter>("todos");
   const [showAdd, setShowAdd] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingText, setEditingText] = useState("");
+  const [newText, setNewText] = useState("");
+  const [newDate, setNewDate] = useState("");
+  const [newCat, setNewCat] = useState<Categoria>("outro");
+
+  const counts = useMemo(() => {
+    const today = startOfDay(new Date());
+    let overdue = 0;
+    let semana = 0;
+    let proximos = 0;
+    let concluidos = 0;
+    for (const i of items) {
+      if (i.concluido) {
+        concluidos++;
+        continue;
+      }
+      const status = getDueStatus(i);
+      if (status === "overdue") overdue++;
+      if (i.due_date && !i.concluido) {
+        const diff = differenceInCalendarDays(parseISO(i.due_date), today);
+        if (diff >= 0 && diff <= 7) semana++;
+        if (diff > 7) proximos++;
+      }
+    }
+    return { overdue, semana, proximos, concluidos };
+  }, [items]);
+
+  const filtered = useMemo(() => {
+    const today = startOfDay(new Date());
+    return items.filter((i) => {
+      switch (filter) {
+        case "atrasados":
+          return !i.concluido && getDueStatus(i) === "overdue";
+        case "semana":
+          if (i.concluido || !i.due_date) return false;
+          {
+            const d = differenceInCalendarDays(parseISO(i.due_date), today);
+            return d >= 0 && d <= 7;
+          }
+        case "proximos":
+          if (i.concluido || !i.due_date) return false;
+          return differenceInCalendarDays(parseISO(i.due_date), today) > 7;
+        case "concluidos":
+          return i.concluido;
+        default:
+          return true;
+      }
+    });
+  }, [items, filter]);
 
   const total = items.length;
-  const completed = items.filter((i) => i.concluido).length;
+  const completed = counts.concluidos;
   const progress = total === 0 ? 0 : Math.round((completed / total) * 100);
 
   const handleAdd = () => {
     if (!newText.trim()) return;
     addItem.mutate(
-      { cliente_id: clienteId, texto: newText.trim() },
-      { onSuccess: () => setNewText("") }
+      {
+        cliente_id: clienteId,
+        texto: newText.trim(),
+        due_date: newDate || null,
+        categoria: newCat,
+      },
+      {
+        onSuccess: () => {
+          setNewText("");
+          setNewDate("");
+          setNewCat("outro");
+        },
+      }
     );
-  };
-
-  const startEdit = (item: ClienteChecklistItem) => {
-    setEditingId(item.id);
-    setEditingText(item.texto);
-  };
-
-  const saveEdit = () => {
-    if (!editingId || !editingText.trim()) {
-      setEditingId(null);
-      return;
-    }
-    updateItem.mutate(
-      { id: editingId, texto: editingText.trim(), clienteId },
-      { onSuccess: () => { setEditingId(null); setEditingText(""); } }
-    );
-  };
-
-  const formatDone = (iso: string | null) => {
-    if (!iso) return null;
-    try {
-      return format(parseISO(iso), "dd/MM HH:mm", { locale: ptBR });
-    } catch {
-      return null;
-    }
   };
 
   return (
     <div className="space-y-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ListChecks className="h-4 w-4 text-muted-foreground" />
-          <h4 className="text-sm font-medium">Checklist de CS</h4>
+          <h4 className="text-sm font-medium">Plano de Sucesso (CS)</h4>
           {total > 0 && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground tabular-nums">
               {completed}/{total}
             </span>
           )}
         </div>
         {total > 0 && (
-          <span className="text-xs font-medium text-muted-foreground">{progress}%</span>
+          <span className="text-xs font-medium text-muted-foreground tabular-nums">
+            {progress}%
+          </span>
         )}
       </div>
 
       {total > 0 && <Progress value={progress} className="h-1.5" />}
 
       {isLoading ? (
-        <p className="text-xs text-muted-foreground py-2">Carregando...</p>
+        <p className="text-xs text-muted-foreground py-2">Carregando…</p>
       ) : total === 0 ? (
-        <div className="flex flex-col items-start gap-2 py-3 px-3 rounded-md border border-dashed border-muted-foreground/30 bg-muted/30">
+        <div className="flex flex-col items-start gap-2 py-4 px-3 rounded-md border border-dashed border-muted-foreground/30 bg-muted/30">
           <p className="text-sm text-muted-foreground">
-            Sem checklist neste cliente.
+            Sem plano de sucesso para este cliente.
           </p>
           <div className="flex gap-2">
             <Button
               size="sm"
-              variant="default"
               className="gap-1.5 h-8 bg-[#3F1757] hover:bg-[#4d1c6c] text-white"
               onClick={() => applyDefault.mutate(clienteId)}
               disabled={applyDefault.isPending}
@@ -120,127 +165,177 @@ export function ClienteChecklistSection({ clienteId }: Props) {
           </div>
         </div>
       ) : (
-        <div className="space-y-1">
-          {items.map((item) => {
-            const doneAt = item.concluido ? formatDone(item.completed_at) : null;
-            return (
-              <div
-                key={item.id}
-                className={cn(
-                  "flex items-start gap-2 group py-1.5 px-2 rounded-md transition-colors hover:bg-muted/60",
-                  item.concluido && "opacity-60"
-                )}
-              >
-                {editingId === item.id ? (
-                  <>
-                    <Input
-                      value={editingText}
-                      onChange={(e) => setEditingText(e.target.value)}
-                      className="flex-1 h-7 text-sm"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") saveEdit();
-                        if (e.key === "Escape") { setEditingId(null); setEditingText(""); }
-                      }}
-                    />
-                    <Button variant="ghost" size="icon" className="h-6 w-6 mt-[2px]" onClick={saveEdit}>
-                      <Check className="h-3.5 w-3.5 text-emerald-500" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 mt-[2px]"
-                      onClick={() => { setEditingId(null); setEditingText(""); }}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Checkbox
-                      checked={item.concluido}
-                      onCheckedChange={(checked) =>
-                        toggleItem.mutate({ id: item.id, concluido: !!checked, clienteId })
-                      }
-                      className="h-4 w-4 shrink-0 mt-[2px]"
-                    />
-                    <div className="flex-1 flex flex-col min-w-0">
-                      <span
-                        className={cn(
-                          "text-sm cursor-pointer break-words leading-relaxed",
-                          item.concluido && "line-through text-muted-foreground"
-                        )}
-                        onDoubleClick={() => startEdit(item)}
-                      >
-                        {item.texto}
-                      </span>
-                      {doneAt && (
-                        <span className="text-[10px] text-muted-foreground self-start">{doneAt}</span>
-                      )}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity mt-[2px]"
-                      onClick={() => startEdit(item)}
-                      title="Editar"
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive mt-[2px]"
-                      onClick={() => deleteItem.mutate({ id: item.id, clienteId })}
-                      title="Excluir"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <>
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <FilterChip
+              active={filter === "todos"}
+              onClick={() => setFilter("todos")}
+              label="Todos"
+              count={total}
+            />
+            <FilterChip
+              active={filter === "atrasados"}
+              onClick={() => setFilter("atrasados")}
+              label="Atrasados"
+              count={counts.overdue}
+              icon={<AlertTriangle className="h-3 w-3" />}
+              tone="danger"
+            />
+            <FilterChip
+              active={filter === "semana"}
+              onClick={() => setFilter("semana")}
+              label="Esta semana"
+              count={counts.semana}
+              icon={<CalendarClock className="h-3 w-3" />}
+              tone="warning"
+            />
+            <FilterChip
+              active={filter === "proximos"}
+              onClick={() => setFilter("proximos")}
+              label="Próximos"
+              count={counts.proximos}
+              icon={<CalendarDays className="h-3 w-3" />}
+            />
+            <FilterChip
+              active={filter === "concluidos"}
+              onClick={() => setFilter("concluidos")}
+              label="Concluídos"
+              count={counts.concluidos}
+              icon={<CheckCircle2 className="h-3 w-3" />}
+              tone="success"
+            />
+          </div>
+
+          {/* Items */}
+          <div className="space-y-1.5">
+            {filtered.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                Nenhum item neste filtro.
+              </p>
+            ) : (
+              filtered.map((item) => (
+                <ClienteChecklistItemRow
+                  key={item.id}
+                  item={item}
+                  clienteId={clienteId}
+                />
+              ))
+            )}
+          </div>
+        </>
       )}
 
-      {/* Add input */}
-      {showAdd || total > 0 ? (
-        showAdd ? (
-          <div className="flex items-center gap-2 pt-1">
-            <Input
-              autoFocus
-              value={newText}
-              onChange={(e) => setNewText(e.target.value)}
-              placeholder="Adicionar item ao checklist..."
-              className="flex-1 h-8 text-sm"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAdd();
-                if (e.key === "Escape") { setShowAdd(false); setNewText(""); }
-              }}
-            />
-            <Button size="sm" variant="ghost" onClick={handleAdd} disabled={!newText.trim()} className="h-8 px-2">
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
+      {/* Add inline */}
+      {showAdd ? (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-primary/80">
+              Novo item
+            </span>
             <Button
-              size="sm"
+              size="icon"
               variant="ghost"
-              onClick={() => { setShowAdd(false); setNewText(""); }}
-              className="h-8 px-2"
+              className="h-6 w-6"
+              onClick={() => {
+                setShowAdd(false);
+                setNewText("");
+              }}
             >
               <X className="h-3.5 w-3.5" />
             </Button>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowAdd(true)}
-            className="mt-1 py-1.5 px-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors w-full text-left"
-          >
-            + Adicionar item
-          </button>
-        )
+          <Input
+            autoFocus
+            value={newText}
+            onChange={(e) => setNewText(e.target.value)}
+            placeholder="Ex.: Reunião de alinhamento"
+            className="h-8 text-sm bg-background"
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          />
+          <div className="grid grid-cols-12 gap-2">
+            <Select
+              value={newCat}
+              onValueChange={(v) => setNewCat(v as Categoria)}
+            >
+              <SelectTrigger className="col-span-6 h-8 text-xs bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(CATEGORIAS) as Categoria[]).map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {CATEGORIAS[c].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              type="date"
+              value={newDate}
+              onChange={(e) => setNewDate(e.target.value)}
+              className="col-span-4 h-8 text-xs bg-background"
+            />
+            <Button
+              size="sm"
+              className="col-span-2 h-8 px-2"
+              onClick={handleAdd}
+              disabled={!newText.trim() || addItem.isPending}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      ) : total > 0 ? (
+        <button
+          type="button"
+          onClick={() => setShowAdd(true)}
+          className="py-1.5 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors w-full text-left"
+        >
+          + Adicionar item
+        </button>
       ) : null}
     </div>
+  );
+}
+
+function FilterChip({
+  active,
+  onClick,
+  label,
+  count,
+  icon,
+  tone,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
+  icon?: React.ReactNode;
+  tone?: "danger" | "warning" | "success";
+}) {
+  const toneClass =
+    tone === "danger"
+      ? "text-rose-300 border-rose-500/30 data-[active=true]:bg-rose-500/15"
+      : tone === "warning"
+      ? "text-amber-300 border-amber-500/30 data-[active=true]:bg-amber-500/15"
+      : tone === "success"
+      ? "text-emerald-300 border-emerald-500/30 data-[active=true]:bg-emerald-500/15"
+      : "text-muted-foreground border-border data-[active=true]:bg-muted";
+  return (
+    <button
+      type="button"
+      data-active={active}
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-[11px] font-medium transition-colors",
+        "hover:bg-muted/60",
+        toneClass,
+        active && "ring-1 ring-inset ring-current/40"
+      )}
+    >
+      {icon}
+      {label}
+      <span className="tabular-nums opacity-80">{count}</span>
+    </button>
   );
 }
