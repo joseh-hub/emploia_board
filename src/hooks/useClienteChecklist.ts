@@ -190,23 +190,34 @@ export function useDeleteClienteChecklistItem() {
 export function useApplyDefaultChecklistToCliente() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (clienteId: number) => {
-      const { data: template, error: tplErr } = await supabase
-        .from("cliente_checklist_template")
-        .select("texto, position, dias_offset, cadencia, ocorrencias, categoria")
-        .order("position", { ascending: true });
-      if (tplErr) throw tplErr;
-      if (!template || template.length === 0) {
-        throw new Error("Nenhum item no template padrão. Cadastre itens em Configurações.");
-      }
+    mutationFn: async (
+      input: number | { clienteId: number; cluster?: Cluster }
+    ) => {
+      const clienteId = typeof input === "number" ? input : input.clienteId;
+      const overrideCluster =
+        typeof input === "number" ? undefined : input.cluster;
 
-      // Determine base date from metadata_clientes.data_inicio (fallback today).
+      // Determine base date + cluster from metadata_clientes
       const { data: cli } = await supabase
         .from("metadata_clientes")
-        .select("data_inicio")
+        .select("data_inicio, Tipo")
         .eq("id", clienteId)
         .maybeSingle();
       const baseDate = cli?.data_inicio ? new Date(cli.data_inicio as string) : new Date();
+      const cluster: Cluster =
+        overrideCluster ?? clusterFromTipo((cli as { Tipo?: string | null })?.Tipo);
+
+      const { data: template, error: tplErr } = await supabase
+        .from("cliente_checklist_template")
+        .select("texto, position, dias_offset, cadencia, ocorrencias, categoria, opcional")
+        .eq("cluster", cluster)
+        .order("position", { ascending: true });
+      if (tplErr) throw tplErr;
+      if (!template || template.length === 0) {
+        throw new Error(
+          `Nenhum item no template do Cluster ${cluster}. Cadastre itens em Configurações → CS Checklist.`
+        );
+      }
 
       const expanded = expandTemplate(
         template.map((t) => ({
@@ -216,6 +227,7 @@ export function useApplyDefaultChecklistToCliente() {
           cadencia: ((t.cadencia as Cadencia) || "unica"),
           ocorrencias: (t.ocorrencias as number) ?? 1,
           categoria: ((t.categoria as Categoria) || "outro"),
+          opcional: !!(t as { opcional?: boolean }).opcional,
         })),
         baseDate
       );
@@ -226,15 +238,19 @@ export function useApplyDefaultChecklistToCliente() {
         position: e.position,
         due_date: e.due_date,
         categoria: e.categoria,
+        opcional: e.opcional,
       }));
       const { error } = await supabase.from("cliente_checklist_items").insert(rows);
       if (error) throw error;
-      return clienteId;
+      return { clienteId, cluster };
     },
-    onSuccess: (clienteId) => {
+    onSuccess: ({ clienteId, cluster }) => {
       queryClient.invalidateQueries({ queryKey: ["cliente-checklist", clienteId] });
       queryClient.invalidateQueries({ queryKey: ["clientes-checklist-counts"] });
-      toast({ title: "Checklist aplicado", description: "O plano de sucesso foi gerado." });
+      toast({
+        title: "Plano de Sucesso aplicado",
+        description: `Template do Cluster ${cluster} gerado.`,
+      });
     },
     onError: (e: Error) =>
       toast({ title: "Erro ao aplicar checklist", description: e.message, variant: "destructive" }),
