@@ -133,7 +133,9 @@ export function TaskCard({ tarefa, onDoubleClick, hideOverdue, isBlocked }: Task
                 {tarefa.projeto?.company_name || "Tarefa"}
               </span>
               {isBlocked && !isCompleted && (
-                <Lock className="h-3 w-3 text-red-500 shrink-0" title="Bloqueada por outra tarefa" />
+                <Lock className="h-3 w-3 text-red-500 shrink-0" aria-label="Bloqueada por outra tarefa">
+                  <title>Bloqueada por outra tarefa</title>
+                </Lock>
               )}
             </div>
 

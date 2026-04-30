@@ -902,6 +902,39 @@ export type Database = {
         }
         Relationships: []
       }
+      followupsara: {
+        Row: {
+          dealId: string | null
+          done: boolean | null
+          fez_follow_up: boolean | null
+          fupStage: number | null
+          lastmessage: string | null
+          telefone: string
+          ultima_interacao: string | null
+          ultimo_fup: string | null
+        }
+        Insert: {
+          dealId?: string | null
+          done?: boolean | null
+          fez_follow_up?: boolean | null
+          fupStage?: number | null
+          lastmessage?: string | null
+          telefone: string
+          ultima_interacao?: string | null
+          ultimo_fup?: string | null
+        }
+        Update: {
+          dealId?: string | null
+          done?: boolean | null
+          fez_follow_up?: boolean | null
+          fupStage?: number | null
+          lastmessage?: string | null
+          telefone?: string
+          ultima_interacao?: string | null
+          ultimo_fup?: string | null
+        }
+        Relationships: []
+      }
       gestao_geral: {
         Row: {
           ano: number
@@ -1625,6 +1658,7 @@ export type Database = {
           company_context: string | null
           company_name: string | null
           created_at: string | null
+          export_wpp: string | null
           financial_email: string | null
           financial_whatsapp: string | null
           horas: number | null
@@ -1649,6 +1683,7 @@ export type Database = {
           site: string | null
           status: string | null
           timing: string | null
+          transcript: string | null
           updated_at: string | null
           user_id: string | null
           v1_delivery_date: string | null
@@ -1662,6 +1697,7 @@ export type Database = {
           company_context?: string | null
           company_name?: string | null
           created_at?: string | null
+          export_wpp?: string | null
           financial_email?: string | null
           financial_whatsapp?: string | null
           horas?: number | null
@@ -1686,6 +1722,7 @@ export type Database = {
           site?: string | null
           status?: string | null
           timing?: string | null
+          transcript?: string | null
           updated_at?: string | null
           user_id?: string | null
           v1_delivery_date?: string | null
@@ -1699,6 +1736,7 @@ export type Database = {
           company_context?: string | null
           company_name?: string | null
           created_at?: string | null
+          export_wpp?: string | null
           financial_email?: string | null
           financial_whatsapp?: string | null
           horas?: number | null
@@ -1723,6 +1761,7 @@ export type Database = {
           site?: string | null
           status?: string | null
           timing?: string | null
+          transcript?: string | null
           updated_at?: string | null
           user_id?: string | null
           v1_delivery_date?: string | null
@@ -1801,6 +1840,24 @@ export type Database = {
         Relationships: []
       }
       rh_chat_history: {
+        Row: {
+          id: number
+          message: Json
+          session_id: string
+        }
+        Insert: {
+          id?: number
+          message: Json
+          session_id: string
+        }
+        Update: {
+          id?: number
+          message?: Json
+          session_id?: string
+        }
+        Relationships: []
+      }
+      sara_chat_histories: {
         Row: {
           id: number
           message: Json
