@@ -275,19 +275,21 @@ export function ClienteChecklistTemplateConfig() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Input
-                      type="number"
-                      min={1}
-                      disabled={editDraft.cadencia === "unica"}
-                      value={editDraft.ocorrencias}
-                      onChange={(e) =>
-                        setEditDraft({
-                          ...editDraft,
-                          ocorrencias: parseInt(e.target.value) || 1,
-                        })
-                      }
-                      className="col-span-3 md:col-span-1 h-9 text-sm"
-                    />
+                    {editDraft.cadencia !== "unica" && (
+                      <Input
+                        type="number"
+                        min={1}
+                        value={editDraft.ocorrencias}
+                        onChange={(e) =>
+                          setEditDraft({
+                            ...editDraft,
+                            ocorrencias: parseInt(e.target.value) || 1,
+                          })
+                        }
+                        className="col-span-3 md:col-span-1 h-9 text-sm"
+                        title="Quantas ocorrências gerar"
+                      />
+                    )}
                     <div className="col-span-3 md:col-span-1 flex gap-1">
                       <Button
                         variant="ghost"
