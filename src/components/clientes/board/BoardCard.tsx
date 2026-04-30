@@ -1,6 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ListChecks } from "lucide-react";
 import { Cliente } from "@/hooks/useClientes";
+import { useClientesChecklistCounts } from "@/hooks/useClientesChecklistCounts";
 import { cn } from "@/lib/utils";
 
 interface BoardCardProps {
