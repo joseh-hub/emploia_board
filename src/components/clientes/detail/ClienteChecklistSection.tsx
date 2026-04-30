@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -9,6 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   ListChecks,
   Sparkles,
@@ -21,12 +27,21 @@ import {
 } from "lucide-react";
 import { differenceInCalendarDays, parseISO, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useClienteChecklist,
   useAddClienteChecklistItem,
   useApplyDefaultChecklistToCliente,
 } from "@/hooks/useClienteChecklist";
-import { CATEGORIAS, type Categoria, getDueStatus } from "@/lib/checklistDates";
+import {
+  CATEGORIAS,
+  CLUSTERS,
+  CLUSTER_LABELS,
+  clusterFromTipo,
+  type Categoria,
+  type Cluster,
+  getDueStatus,
+} from "@/lib/checklistDates";
 import { ClienteChecklistItemRow } from "./ClienteChecklistItemRow";
 
 interface Props {
@@ -39,6 +54,23 @@ export function ClienteChecklistSection({ clienteId }: Props) {
   const { data: items = [], isLoading } = useClienteChecklist(clienteId);
   const addItem = useAddClienteChecklistItem();
   const applyDefault = useApplyDefaultChecklistToCliente();
+
+  // Read client's Tipo to suggest the right cluster.
+  const { data: cliMeta } = useQuery({
+    queryKey: ["cliente-tipo", clienteId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("metadata_clientes")
+        .select("Tipo")
+        .eq("id", clienteId)
+        .maybeSingle();
+      return (data as { Tipo?: string | null } | null) ?? null;
+    },
+  });
+  const tipo = cliMeta?.Tipo ?? null;
+  const suggestedCluster: Cluster = clusterFromTipo(tipo);
+  const tipoMissing = !tipo || tipo.trim() === "";
+  const [pickerCluster, setPickerCluster] = useState<Cluster>(suggestedCluster);
 
   const [filter, setFilter] = useState<Filter>("todos");
   const [showAdd, setShowAdd] = useState(false);
