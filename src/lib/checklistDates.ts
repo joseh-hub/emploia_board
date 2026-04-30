@@ -169,6 +169,7 @@ export interface TemplateExpandable {
   cadencia: Cadencia;
   ocorrencias: number;
   categoria: Categoria;
+  opcional?: boolean;
 }
 
 export interface ExpandedItem {
@@ -176,6 +177,7 @@ export interface ExpandedItem {
   position: number;
   due_date: string; // ISO yyyy-mm-dd
   categoria: Categoria;
+  opcional: boolean;
 }
 
 /**
@@ -200,6 +202,7 @@ export function expandTemplate(
         position: pos++,
         due_date: format(due, "yyyy-MM-dd"),
         categoria: t.categoria || "outro",
+        opcional: !!t.opcional,
       });
     }
   }
