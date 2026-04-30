@@ -8,6 +8,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Pencil, Check, X, Info } from "lucide-react";
 import {
   useClienteChecklistTemplate,
@@ -19,8 +22,11 @@ import {
 import {
   CADENCIAS,
   CATEGORIAS,
+  CLUSTERS,
+  CLUSTER_LABELS,
   type Cadencia,
   type Categoria,
+  type Cluster,
 } from "@/lib/checklistDates";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +36,7 @@ interface DraftRow {
   cadencia: Cadencia;
   ocorrencias: number;
   categoria: Categoria;
+  opcional: boolean;
 }
 
 const emptyDraft = (): DraftRow => ({
@@ -38,10 +45,51 @@ const emptyDraft = (): DraftRow => ({
   cadencia: "unica",
   ocorrencias: 1,
   categoria: "reuniao",
+  opcional: false,
 });
 
+const CLUSTER_DESCRIPTIONS: Record<Cluster, string> = {
+  B: "Plano completo — reuniões frequentes, QBRs presenciais, presente de aniversário.",
+  C: "Plano intermediário — cadência mensal, QBRs remotos, sem presente.",
+  D: "Plano enxuto — só marcos (kickoff, QBRs trimestrais por PDF/Loom).",
+};
+
 export function ClienteChecklistTemplateConfig() {
-  const { data: items = [] } = useClienteChecklistTemplate();
+  const [activeCluster, setActiveCluster] = useState<Cluster>("B");
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start gap-2 p-3 rounded-md bg-muted/40 text-xs text-muted-foreground">
+        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+        <span>
+          Os itens são aplicados a cada cliente conforme o campo <strong>Tipo</strong> dele
+          (Cluster B, C ou D), com prazo calculado a partir da data de início. Mudanças aqui não
+          afetam clientes existentes — use <strong>Aplicar checklist padrão</strong> dentro do
+          card do cliente.
+        </span>
+      </div>
+
+      <Tabs value={activeCluster} onValueChange={(v) => setActiveCluster(v as Cluster)}>
+        <TabsList className="grid grid-cols-3 w-full max-w-md">
+          {CLUSTERS.map((c) => (
+            <TabsTrigger key={c} value={c}>
+              {CLUSTER_LABELS[c]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {CLUSTERS.map((c) => (
+          <TabsContent key={c} value={c} className="mt-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{CLUSTER_DESCRIPTIONS[c]}</p>
+            <ClusterTemplateEditor cluster={c} />
+          </TabsContent>
+        ))}
+      </Tabs>
+    </div>
+  );
+}
+
+function ClusterTemplateEditor({ cluster }: { cluster: Cluster }) {
+  const { data: items = [] } = useClienteChecklistTemplate(cluster);
   const addItem = useAddTemplateItem();
   const updateItem = useUpdateTemplateItem();
   const deleteItem = useDeleteTemplateItem();
@@ -53,7 +101,7 @@ export function ClienteChecklistTemplateConfig() {
   const handleAdd = () => {
     if (!draft.texto.trim()) return;
     addItem.mutate(
-      { ...draft, texto: draft.texto.trim() },
+      { ...draft, cluster, texto: draft.texto.trim() },
       { onSuccess: () => setDraft(emptyDraft()) }
     );
   };
@@ -66,6 +114,7 @@ export function ClienteChecklistTemplateConfig() {
       cadencia: (item.cadencia as Cadencia) || "unica",
       ocorrencias: item.ocorrencias ?? 1,
       categoria: (item.categoria as Categoria) || "outro",
+      opcional: !!item.opcional,
     });
   };
 
@@ -81,21 +130,12 @@ export function ClienteChecklistTemplateConfig() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-2 p-3 rounded-md bg-muted/40 text-xs text-muted-foreground">
-        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-        <span>
-          Estes itens são aplicados automaticamente a cada novo cliente, com prazo calculado a partir
-          da data de início. Mudanças aqui não afetam clientes existentes — use{" "}
-          <strong>Aplicar checklist padrão</strong> dentro do card do cliente.
-        </span>
-      </div>
-
+    <div className="space-y-3">
       {/* Add row */}
       <div className="border rounded-lg p-3 bg-card space-y-2">
         <div className="flex items-center justify-between">
           <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-            Novo item
+            Novo item — {CLUSTER_LABELS[cluster]}
           </div>
           <span className="text-[10px] text-muted-foreground">
             {draft.cadencia === "unica"
@@ -111,7 +151,7 @@ export function ClienteChecklistTemplateConfig() {
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             className={cn(
               "h-9 text-sm",
-              draft.cadencia === "unica" ? "col-span-12 md:col-span-6" : "col-span-12 md:col-span-4"
+              draft.cadencia === "unica" ? "col-span-12 md:col-span-5" : "col-span-12 md:col-span-3"
             )}
           />
           <Select
@@ -133,9 +173,7 @@ export function ClienteChecklistTemplateConfig() {
             type="number"
             min={0}
             value={draft.dias_offset}
-            onChange={(e) =>
-              setDraft({ ...draft, dias_offset: parseInt(e.target.value) || 0 })
-            }
+            onChange={(e) => setDraft({ ...draft, dias_offset: parseInt(e.target.value) || 0 })}
             className="col-span-3 md:col-span-1 h-9 text-sm"
             title={
               draft.cadencia === "unica"
@@ -186,21 +224,24 @@ export function ClienteChecklistTemplateConfig() {
             <Plus className="h-3.5 w-3.5" />
           </Button>
         </div>
-        <div className="text-[10px] text-muted-foreground grid grid-cols-12 gap-2 px-1">
-          <span className={draft.cadencia === "unica" ? "col-span-12 md:col-span-6" : "col-span-12 md:col-span-4"}>
-            Nome
-          </span>
-          <span className="col-span-6 md:col-span-2">Categoria</span>
-          <span className="col-span-3 md:col-span-1">Dias</span>
-          <span className="col-span-3 md:col-span-2">Cadência</span>
-          {draft.cadencia !== "unica" && <span className="col-span-3 md:col-span-2">Qtd</span>}
-          <span className="col-span-3 md:col-span-1">Add</span>
+        <div className="flex items-center gap-2 pt-1">
+          <Switch
+            id={`opcional-${cluster}`}
+            checked={draft.opcional}
+            onCheckedChange={(v) => setDraft({ ...draft, opcional: v })}
+          />
+          <Label
+            htmlFor={`opcional-${cluster}`}
+            className="text-[11px] text-muted-foreground cursor-pointer"
+          >
+            Opcional <span className="text-muted-foreground/70">(condicional — só faz se aplicável)</span>
+          </Label>
         </div>
       </div>
 
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-6">
-          Nenhum item no template ainda. Adicione o primeiro item acima.
+          Nenhum item no template de {CLUSTER_LABELS[cluster]} ainda.
         </p>
       ) : (
         <div className="space-y-1.5">
@@ -217,96 +258,105 @@ export function ClienteChecklistTemplateConfig() {
                 )}
               >
                 {isEditing ? (
-                  <div className="grid grid-cols-12 gap-2 p-2.5">
-                    <Input
-                      value={editDraft.texto}
-                      onChange={(e) => setEditDraft({ ...editDraft, texto: e.target.value })}
-                      className="col-span-12 md:col-span-5 h-9 text-sm"
-                      autoFocus
-                    />
-                    <Select
-                      value={editDraft.categoria}
-                      onValueChange={(v) =>
-                        setEditDraft({ ...editDraft, categoria: v as Categoria })
-                      }
-                    >
-                      <SelectTrigger className="col-span-6 md:col-span-2 h-9 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(Object.keys(CATEGORIAS) as Categoria[]).map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {CATEGORIAS[c].label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={editDraft.dias_offset}
-                      onChange={(e) =>
-                        setEditDraft({
-                          ...editDraft,
-                          dias_offset: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      className="col-span-3 md:col-span-1 h-9 text-sm"
-                    />
-                    <Select
-                      value={editDraft.cadencia}
-                      onValueChange={(v) =>
-                        setEditDraft({
-                          ...editDraft,
-                          cadencia: v as Cadencia,
-                          ocorrencias:
-                            v === "unica" ? 1 : editDraft.ocorrencias || 4,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="col-span-3 md:col-span-2 h-9 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(Object.keys(CADENCIAS) as Cadencia[]).map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {CADENCIAS[c].label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {editDraft.cadencia !== "unica" && (
+                  <div className="p-2.5 space-y-2">
+                    <div className="grid grid-cols-12 gap-2">
+                      <Input
+                        value={editDraft.texto}
+                        onChange={(e) => setEditDraft({ ...editDraft, texto: e.target.value })}
+                        className="col-span-12 md:col-span-5 h-9 text-sm"
+                        autoFocus
+                      />
+                      <Select
+                        value={editDraft.categoria}
+                        onValueChange={(v) =>
+                          setEditDraft({ ...editDraft, categoria: v as Categoria })
+                        }
+                      >
+                        <SelectTrigger className="col-span-6 md:col-span-2 h-9 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(CATEGORIAS) as Categoria[]).map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {CATEGORIAS[c].label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <Input
                         type="number"
-                        min={1}
-                        value={editDraft.ocorrencias}
+                        min={0}
+                        value={editDraft.dias_offset}
                         onChange={(e) =>
                           setEditDraft({
                             ...editDraft,
-                            ocorrencias: parseInt(e.target.value) || 1,
+                            dias_offset: parseInt(e.target.value) || 0,
                           })
                         }
                         className="col-span-3 md:col-span-1 h-9 text-sm"
-                        title="Quantas ocorrências gerar"
                       />
-                    )}
-                    <div className="col-span-3 md:col-span-1 flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9"
-                        onClick={handleSave}
+                      <Select
+                        value={editDraft.cadencia}
+                        onValueChange={(v) =>
+                          setEditDraft({
+                            ...editDraft,
+                            cadencia: v as Cadencia,
+                            ocorrencias: v === "unica" ? 1 : editDraft.ocorrencias || 4,
+                          })
+                        }
                       >
-                        <Check className="h-4 w-4 text-emerald-500" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9"
-                        onClick={() => setEditingId(null)}
+                        <SelectTrigger className="col-span-3 md:col-span-2 h-9 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(CADENCIAS) as Cadencia[]).map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {CADENCIAS[c].label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {editDraft.cadencia !== "unica" && (
+                        <Input
+                          type="number"
+                          min={1}
+                          value={editDraft.ocorrencias}
+                          onChange={(e) =>
+                            setEditDraft({
+                              ...editDraft,
+                              ocorrencias: parseInt(e.target.value) || 1,
+                            })
+                          }
+                          className="col-span-3 md:col-span-1 h-9 text-sm"
+                          title="Quantas ocorrências gerar"
+                        />
+                      )}
+                      <div className="col-span-3 md:col-span-1 flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleSave}>
+                          <Check className="h-4 w-4 text-emerald-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() => setEditingId(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id={`opc-edit-${item.id}`}
+                        checked={editDraft.opcional}
+                        onCheckedChange={(v) => setEditDraft({ ...editDraft, opcional: v })}
+                      />
+                      <Label
+                        htmlFor={`opc-edit-${item.id}`}
+                        className="text-[11px] text-muted-foreground cursor-pointer"
                       >
-                        <X className="h-4 w-4" />
-                      </Button>
+                        Opcional
+                      </Label>
                     </div>
                   </div>
                 ) : (
@@ -324,6 +374,11 @@ export function ClienteChecklistTemplateConfig() {
                       <Icon className="h-3.5 w-3.5" />
                     </div>
                     <span className="text-sm flex-1 truncate">{item.texto}</span>
+                    {item.opcional && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-zinc-500/10 text-zinc-400 border border-zinc-500/20">
+                        Opcional
+                      </span>
+                    )}
                     <span
                       className={cn(
                         "text-[10px] px-1.5 py-0.5 rounded font-medium hidden sm:inline-block",

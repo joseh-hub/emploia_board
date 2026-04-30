@@ -12,6 +12,28 @@ import {
 
 export type Cadencia = "unica" | "semanal" | "quinzenal" | "mensal" | "trimestral";
 export type Categoria = "reuniao" | "qbr" | "report" | "auditoria" | "grow" | "outro";
+export type Cluster = "B" | "C" | "D";
+
+export const CLUSTERS: Cluster[] = ["B", "C", "D"];
+
+export const CLUSTER_LABELS: Record<Cluster, string> = {
+  B: "Cluster B",
+  C: "Cluster C",
+  D: "Cluster D",
+};
+
+/**
+ * Map a client `Tipo` (free-form text in metadata_clientes) to a checklist cluster.
+ * Falls back to 'B' (most complete plan) when the value is empty/unknown.
+ */
+export function clusterFromTipo(tipo: string | null | undefined): Cluster {
+  if (!tipo) return "B";
+  const t = tipo.trim().toUpperCase();
+  if (t === "B" || t.includes("CLUSTER B") || t.includes("TIPO B")) return "B";
+  if (t === "C" || t.includes("CLUSTER C") || t.includes("TIPO C")) return "C";
+  if (t === "D" || t.includes("CLUSTER D") || t.includes("TIPO D")) return "D";
+  return "B";
+}
 
 export interface CategoriaMeta {
   label: string;
@@ -147,6 +169,7 @@ export interface TemplateExpandable {
   cadencia: Cadencia;
   ocorrencias: number;
   categoria: Categoria;
+  opcional?: boolean;
 }
 
 export interface ExpandedItem {
@@ -154,6 +177,7 @@ export interface ExpandedItem {
   position: number;
   due_date: string; // ISO yyyy-mm-dd
   categoria: Categoria;
+  opcional: boolean;
 }
 
 /**
@@ -178,6 +202,7 @@ export function expandTemplate(
         position: pos++,
         due_date: format(due, "yyyy-MM-dd"),
         categoria: t.categoria || "outro",
+        opcional: !!t.opcional,
       });
     }
   }

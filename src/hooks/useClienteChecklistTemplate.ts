@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import type { Cadencia, Categoria } from "@/lib/checklistDates";
+import type { Cadencia, Categoria, Cluster } from "@/lib/checklistDates";
 
 export interface ClienteChecklistTemplateItem {
   id: string;
@@ -11,18 +11,22 @@ export interface ClienteChecklistTemplateItem {
   cadencia: Cadencia;
   ocorrencias: number;
   categoria: Categoria;
+  cluster: Cluster;
+  opcional: boolean;
   created_at: string;
   updated_at: string;
 }
 
-export function useClienteChecklistTemplate() {
+export function useClienteChecklistTemplate(cluster?: Cluster) {
   return useQuery({
-    queryKey: ["cliente-checklist-template"],
+    queryKey: ["cliente-checklist-template", cluster ?? "all"],
     queryFn: async (): Promise<ClienteChecklistTemplateItem[]> => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("cliente_checklist_template")
         .select("*")
         .order("position", { ascending: true });
+      if (cluster) q = q.eq("cluster", cluster);
+      const { data, error } = await q;
       if (error) throw error;
       return (data || []) as ClienteChecklistTemplateItem[];
     },
@@ -34,14 +38,17 @@ export function useAddTemplateItem() {
   return useMutation({
     mutationFn: async (input: {
       texto: string;
+      cluster: Cluster;
       dias_offset?: number;
       cadencia?: Cadencia;
       ocorrencias?: number;
       categoria?: Categoria;
+      opcional?: boolean;
     }) => {
       const { data: existing } = await supabase
         .from("cliente_checklist_template")
         .select("position")
+        .eq("cluster", input.cluster)
         .order("position", { ascending: false })
         .limit(1);
       const nextPos = (existing?.[0]?.position ?? -1) + 1;
@@ -52,6 +59,8 @@ export function useAddTemplateItem() {
         cadencia: input.cadencia ?? "unica",
         ocorrencias: input.ocorrencias ?? 1,
         categoria: input.categoria ?? "outro",
+        cluster: input.cluster,
+        opcional: input.opcional ?? false,
       });
       if (error) throw error;
     },
@@ -71,6 +80,7 @@ export function useUpdateTemplateItem() {
       cadencia?: Cadencia;
       ocorrencias?: number;
       categoria?: Categoria;
+      opcional?: boolean;
     }) => {
       const { id, ...patch } = input;
       const { error } = await supabase

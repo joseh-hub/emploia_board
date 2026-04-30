@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -9,6 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   ListChecks,
   Sparkles,
@@ -21,12 +27,21 @@ import {
 } from "lucide-react";
 import { differenceInCalendarDays, parseISO, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useClienteChecklist,
   useAddClienteChecklistItem,
   useApplyDefaultChecklistToCliente,
 } from "@/hooks/useClienteChecklist";
-import { CATEGORIAS, type Categoria, getDueStatus } from "@/lib/checklistDates";
+import {
+  CATEGORIAS,
+  CLUSTERS,
+  CLUSTER_LABELS,
+  clusterFromTipo,
+  type Categoria,
+  type Cluster,
+  getDueStatus,
+} from "@/lib/checklistDates";
 import { ClienteChecklistItemRow } from "./ClienteChecklistItemRow";
 
 interface Props {
@@ -39,6 +54,23 @@ export function ClienteChecklistSection({ clienteId }: Props) {
   const { data: items = [], isLoading } = useClienteChecklist(clienteId);
   const addItem = useAddClienteChecklistItem();
   const applyDefault = useApplyDefaultChecklistToCliente();
+
+  // Read client's Tipo to suggest the right cluster.
+  const { data: cliMeta } = useQuery({
+    queryKey: ["cliente-tipo", clienteId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("metadata_clientes")
+        .select("Tipo")
+        .eq("id", clienteId)
+        .maybeSingle();
+      return (data as { Tipo?: string | null } | null) ?? null;
+    },
+  });
+  const tipo = cliMeta?.Tipo ?? null;
+  const suggestedCluster: Cluster = clusterFromTipo(tipo);
+  const tipoMissing = !tipo || tipo.trim() === "";
+  const [pickerCluster, setPickerCluster] = useState<Cluster>(suggestedCluster);
 
   const [filter, setFilter] = useState<Filter>("todos");
   const [showAdd, setShowAdd] = useState(false);
@@ -143,16 +175,73 @@ export function ClienteChecklistSection({ clienteId }: Props) {
           <p className="text-sm text-muted-foreground">
             Sem plano de sucesso para este cliente.
           </p>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              className="gap-1.5 h-8 bg-[#3F1757] hover:bg-[#4d1c6c] text-white"
-              onClick={() => applyDefault.mutate(clienteId)}
-              disabled={applyDefault.isPending}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Aplicar checklist padrão
-            </Button>
+          <p className="text-[11px] text-muted-foreground">
+            {tipoMissing ? (
+              <>
+                <strong className="text-amber-400">Tipo do cliente não definido.</strong> Escolha
+                qual cluster aplicar abaixo.
+              </>
+            ) : (
+              <>
+                Será aplicado o template do{" "}
+                <strong className="text-foreground">{CLUSTER_LABELS[suggestedCluster]}</strong>{" "}
+                (Tipo: {tipo}).
+              </>
+            )}
+          </p>
+          <div className="flex flex-wrap gap-2 items-center">
+            {tipoMissing ? (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="gap-1.5 h-8 bg-[#3F1757] hover:bg-[#4d1c6c] text-white"
+                    disabled={applyDefault.isPending}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Escolher cluster e aplicar
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-64 space-y-2">
+                  <p className="text-xs font-medium">Qual cluster aplicar?</p>
+                  <Select
+                    value={pickerCluster}
+                    onValueChange={(v) => setPickerCluster(v as Cluster)}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CLUSTERS.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {CLUSTER_LABELS[c]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    className="w-full h-8"
+                    onClick={() =>
+                      applyDefault.mutate({ clienteId, cluster: pickerCluster })
+                    }
+                    disabled={applyDefault.isPending}
+                  >
+                    Aplicar {CLUSTER_LABELS[pickerCluster]}
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Button
+                size="sm"
+                className="gap-1.5 h-8 bg-[#3F1757] hover:bg-[#4d1c6c] text-white"
+                onClick={() => applyDefault.mutate(clienteId)}
+                disabled={applyDefault.isPending}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Aplicar {CLUSTER_LABELS[suggestedCluster]}
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -160,7 +249,7 @@ export function ClienteChecklistSection({ clienteId }: Props) {
               onClick={() => setShowAdd(true)}
             >
               <Plus className="h-3.5 w-3.5" />
-              Adicionar item
+              Adicionar item manualmente
             </Button>
           </div>
         </div>
