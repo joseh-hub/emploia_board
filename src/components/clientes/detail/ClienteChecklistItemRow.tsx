@@ -156,15 +156,22 @@ export function ClienteChecklistItemRow({ item, clienteId }: Props) {
                   className="h-7 text-sm"
                 />
               ) : (
-                <span
-                  className={cn(
-                    "text-sm font-medium leading-snug block break-words cursor-text",
-                    item.concluido && "line-through text-muted-foreground"
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {item.opcional && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide bg-zinc-500/10 text-zinc-400 border border-zinc-500/20 shrink-0">
+                      Opcional
+                    </span>
                   )}
-                  onDoubleClick={() => setEditingTitle(true)}
-                >
-                  {item.texto}
-                </span>
+                  <span
+                    className={cn(
+                      "text-sm font-medium leading-snug break-words cursor-text",
+                      item.concluido && "line-through text-muted-foreground"
+                    )}
+                    onDoubleClick={() => setEditingTitle(true)}
+                  >
+                    {item.texto}
+                  </span>
+                </div>
               )}
               <div className="flex items-center gap-2 mt-1 text-[11px]">
                 <span className={cn("font-medium", styles.text)}>{dueLabel}</span>
