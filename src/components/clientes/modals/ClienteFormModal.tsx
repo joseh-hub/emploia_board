@@ -390,6 +390,29 @@ export function ClienteFormModal({
               </div>
             </div>
 
+            {!isEditing && (
+              <div className="border-t pt-4">
+                <div className="flex items-start justify-between gap-4 rounded-lg border bg-muted/30 p-3">
+                  <div className="flex items-start gap-2.5 flex-1">
+                    <ListChecks className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="space-y-0.5">
+                      <Label htmlFor="apply-checklist" className="text-sm font-medium cursor-pointer">
+                        Aplicar checklist padrão de CS
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Cria automaticamente o checklist do processo de Customer Success neste cliente.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="apply-checklist"
+                    checked={applyChecklist}
+                    onCheckedChange={setApplyChecklist}
+                  />
+                </div>
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 type="button"
