@@ -310,6 +310,66 @@ export type Database = {
           },
         ]
       }
+      cliente_checklist_items: {
+        Row: {
+          cliente_id: number
+          completed_at: string | null
+          completed_by: string | null
+          concluido: boolean
+          created_at: string
+          id: string
+          position: number
+          texto: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: number
+          completed_at?: string | null
+          completed_by?: string | null
+          concluido?: boolean
+          created_at?: string
+          id?: string
+          position?: number
+          texto: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: number
+          completed_at?: string | null
+          completed_by?: string | null
+          concluido?: boolean
+          created_at?: string
+          id?: string
+          position?: number
+          texto?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cliente_checklist_template: {
+        Row: {
+          created_at: string
+          id: string
+          position: number
+          texto: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          position?: number
+          texto: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          position?: number
+          texto?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cliente_comments: {
         Row: {
           cliente_id: number
