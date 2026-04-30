@@ -5,7 +5,8 @@ import { Cliente } from "@/hooks/useClientes";
 import { DescriptionEditor } from "./DescriptionEditor";
 import { CommentsSection } from "./CommentsSection";
 import { ActivityFeed } from "./ActivityFeed";
-import { Building, Calendar, DollarSign, Clock, Users, FileText, MessageSquare, Activity } from "lucide-react";
+import { ClienteChecklistSection } from "./ClienteChecklistSection";
+import { Building, Calendar, DollarSign, Clock, Users, FileText, MessageSquare, Activity, ListChecks } from "lucide-react";
 
 interface ClienteDetailTabsProps {
   cliente: Cliente & { description?: string | null };
