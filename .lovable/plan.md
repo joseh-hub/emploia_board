@@ -1,111 +1,113 @@
+## Objetivo
 
-# Checklist de CS nos cards de Cliente
+Transformar o Checklist de CS de uma lista simples para um **plano de sucesso temporal**, onde cada etapa tem prazo automático contado a partir da entrada do cliente, espaço para registrar o que aconteceu, e uma UX que destaca atrasos, próximos passos e histórico.
 
-## Visão geral
+## O que muda na visão do usuário
 
-Adicionar uma seção de **Checklist** dentro do modal de detalhe do Cliente (mesma UX já usada em Tarefas e Custom Boards), alimentada por um **template padrão editável** em Configurações. Todo cliente novo recebe o template automaticamente (com opção de pular no formulário). Clientes antigos podem receber o checklist via botão manual no próprio card.
+**No card do cliente (aba Checklist):**
+- Cada item exibe **data prevista** (ex.: "Vence em 7 dias" / "Atrasado há 3 dias" / "Concluído em 15/05") calculada a partir de uma data-base do cliente.
+- Botão **"Registrar execução"** abre um pequeno painel inline para descrever **o que aconteceu** (notas em texto livre), data real de execução e quem participou.
+- Itens concluídos mostram resumo da nota (com expandir).
+- Filtros rápidos no topo: **Atrasados / Esta semana / Próximos / Concluídos**.
+- Indicador visual: barra colorida na lateral do item (vermelho = atrasado, âmbar = vence em ≤ 3 dias, verde = ok, cinza = futuro).
 
-## O que será construído
+**Na configuração do template (Configurações):**
+- Cada item do template ganha campo **"Prazo (dias após entrada)"** — ex.: 7, 14, 30, 90.
+- Campo opcional **"Cadência"**: única, semanal, quinzenal, mensal, trimestral (gera automaticamente as próximas N ocorrências).
+- Campo opcional **"Categoria"** (Reunião, QBR, Report, Auditoria, Grow, Outro) com ícone/cor.
+- Drag-and-drop para ordenar.
+- Preview lateral mostrando como ficaria a timeline para um cliente novo.
 
-### 1. Banco de dados (migration)
+**No mini indicador do board:**
+- Mantém `3/12` mas adiciona ponto vermelho se houver item atrasado.
 
-**Tabela `cliente_checklist_items`** — itens de checklist por cliente
-- `id` uuid PK
-- `cliente_id` bigint (FK lógica para `metadata_clientes.id`)
-- `texto` text
-- `concluido` boolean (default false)
-- `position` int
-- `completed_at` timestamptz
-- `completed_by` uuid
-- `created_at`, `updated_at` timestamptz
-- RLS: `authenticated` pode ler/inserir/atualizar/deletar (segue padrão das outras tabelas de cliente)
+## Modelo de dados (alterações)
 
-**Tabela `cliente_checklist_template`** — template padrão único do workspace
-- `id` uuid PK
-- `position` int
-- `texto` text
-- `created_at`, `updated_at` timestamptz
-- RLS: `authenticated` ALL
+**`cliente_checklist_template`** — adicionar:
+- `dias_offset` integer (prazo em dias após data-base; default 0)
+- `cadencia` text (`unica` | `semanal` | `quinzenal` | `mensal` | `trimestral`; default `unica`)
+- `ocorrencias` integer (qtd para cadências recorrentes; default 1)
+- `categoria` text (`reuniao` | `qbr` | `report` | `auditoria` | `grow` | `outro`; default `outro`)
 
-**Tabela `cliente_checklist_subitems`** (opcional, só se você precisar de subitens dentro de cada item — me confirma quando mandar o processo). Por enquanto deixo previsto mas só implemento se fizer sentido.
+**`cliente_checklist_items`** — adicionar:
+- `due_date` date (data prevista calculada na criação)
+- `nota` text (descrição do que aconteceu na execução)
+- `executado_em` date (data real de execução, opcional, default = `completed_at`)
+- `categoria` text (espelha do template)
 
-**Trigger `apply_default_checklist_to_cliente`** em `metadata_clientes` (AFTER INSERT)
-- Lê todos os itens de `cliente_checklist_template` ordenados por `position`
-- Insere uma cópia em `cliente_checklist_items` para o novo `cliente_id`
-- Pode ser pulado passando uma flag (ver item 4)
+**Data-base do cliente:** usar `metadata_clientes.data_inicio` quando existir; senão `created_at` do registro. Não há nova coluna no cliente.
 
-### 2. Hook `useClienteChecklist`
+## Lógica de geração
 
-Em `src/hooks/useClienteChecklist.ts`:
-- `useClienteChecklist(clienteId)` — lista itens
-- `useAddChecklistItem`, `useToggleChecklistItem`, `useUpdateChecklistItem`, `useDeleteChecklistItem`, `useReorderChecklistItems`
-- `useApplyDefaultChecklist(clienteId)` — copia o template atual para o cliente (usado no botão retroativo)
+Ao aplicar template (criação automática ou botão manual):
+1. Buscar data-base do cliente.
+2. Para cada item do template:
+   - Se `cadencia = unica`: criar 1 item com `due_date = data_base + dias_offset`.
+   - Se recorrente: criar `ocorrencias` itens com offsets crescentes (ex.: semanal partindo de `dias_offset`, somando 7 dias por ocorrência), numerando o texto (`1ª Reunião Semanal`, `2ª Reunião Semanal`, …).
+3. Persistir `categoria` e `position` sequencial.
 
-Hook paralelo `useClienteChecklistTemplate` para a tela de configuração.
+## UI/UX detalhada
 
-### 3. UI — Seção de checklist no modal do Cliente
+### Aba "Checklist" no card do cliente
+```text
+[Filtros: Todos | Atrasados (2) | Esta semana | Próximos | Concluídos]
+[Progresso: ████░░░░ 4/12 (33%)]
 
-Novo componente `src/components/clientes/detail/ClienteChecklistSection.tsx`, reaproveitando o visual de `TaskChecklistSection`:
-- Lista de itens com checkbox + texto
-- Barra de progresso (X/Y concluídos, %)
-- Adicionar/editar/remover/reordenar (drag handles)
-- Timestamp `dd/MM HH:mm` ao lado de itens concluídos
-- Botão **"Aplicar checklist padrão"** quando o cliente não tem nenhum item (caso retroativo)
+[●] 1ª Reunião Semanal              📅 Vence em 7 dias    [Registrar]
+    └ Categoria: Reunião
 
-Integração: adicionar a seção em `ClienteDetailTabs` (nova aba "Checklist" ou bloco fixo na aba principal — vou seguir o padrão das tarefas e colocar como bloco fixo).
+[✓] Kickoff                          ✅ Concluído 02/05
+    Nota: "Cliente alinhou objetivos Q2, decidiu focar em ..."  [expandir]
 
-### 4. Toggle "pular checklist" no formulário
+[●] QBR                              ⚠ Atrasado há 3 dias  [Registrar]
+```
 
-Em `ClienteFormModal.tsx`, adicionar um switch **"Aplicar checklist padrão de CS"** (default: ligado). Quando desligado, passamos uma flag via `sessionStorage` ou um campo temporário para o trigger não aplicar — ou, mais simples e robusto, não usamos trigger e fazemos o INSERT do checklist no próprio frontend logo após criar o cliente, condicional ao toggle.
+### Painel "Registrar execução" (inline, abre abaixo do item)
+- Textarea para nota (markdown simples / mention).
+- Date picker para data real (default = hoje).
+- Botão "Concluir e salvar".
+- Cancelar fecha sem alterar.
 
-**Decisão técnica:** vou usar a abordagem **frontend** (não trigger), porque:
-- Permite controle fino do toggle sem hacks de session
-- Mais fácil de debugar
-- Mantém a lógica de "qual template aplicar" no código de aplicação, não no banco
+### Configuração do template
+Tabela com colunas: ordem · texto · categoria (badge) · prazo (dias) · cadência · ações. Drag handle à esquerda. Linha de adição rápida no rodapé com todos os campos.
 
-Trigger fica como fallback opcional caso você prefira depois.
+## Componentes / arquivos
 
-### 5. Tela de configuração do template padrão
+**Novos**
+- `src/components/clientes/detail/ClienteChecklistItemRow.tsx` — linha rica com badges, prazo e painel de registro.
+- `src/components/clientes/detail/ClienteChecklistFilters.tsx` — filtros + contadores.
+- `src/components/clientes/detail/RegistrarExecucaoPanel.tsx` — formulário inline (nota + data).
+- `src/lib/checklistDates.ts` — helpers `computeDueLabel`, `getDueStatus`, `expandTemplate`.
 
-Em `src/pages/Configuracoes.tsx`, adicionar uma nova aba/seção **"Checklist Padrão de Clientes"**:
-- Lista editável dos itens do template (`cliente_checklist_template`)
-- Adicionar item, editar texto inline, remover, reordenar (drag-and-drop)
-- Aviso: "Mudanças aqui se aplicam apenas a novos clientes. Clientes existentes não são afetados."
-- Componente: `src/components/clientes/ClienteChecklistTemplateConfig.tsx`
+**Editados**
+- `src/components/clientes/detail/ClienteChecklistSection.tsx` — usa novos componentes, filtros, agrupamento.
+- `src/components/clientes/ClienteChecklistTemplateConfig.tsx` — campos de offset, cadência, categoria; preview.
+- `src/hooks/useClienteChecklist.ts` — `useApplyDefaultChecklistToCliente` passa a calcular `due_date` e expandir cadências; `useToggleClienteChecklistItem` aceita `nota` e `executado_em`.
+- `src/hooks/useClienteChecklistTemplate.ts` — CRUD com novos campos.
+- `src/components/clientes/board/BoardCard.tsx` — adicionar ponto de alerta se houver atrasados (já recebe `useClientesChecklistCounts`; estender para também retornar `overdue_count`).
+- `src/hooks/useClientesChecklistCounts.ts` — incluir contagem de atrasados.
 
-### 6. Botão retroativo no card
+## Detalhes técnicos
 
-No `ClienteChecklistSection`, quando o cliente tiver 0 itens:
-- Empty state com texto "Sem checklist neste cliente"
-- Botão **"Aplicar checklist padrão de CS"** que chama `useApplyDefaultChecklist(clienteId)`
+- Migração SQL adiciona colunas com defaults (não quebra dados existentes; itens antigos ficam sem `due_date`, exibidos como "sem prazo").
+- Cálculo de `due_date` feito no client (TypeScript) ao aplicar template — evita trigger e mantém lógica visível.
+- `categoria` mapeada para cor/ícone num único objeto em `checklistDates.ts` (`reuniao`→azul/Calendar, `qbr`→roxo/BarChart, `report`→âmbar/FileText, `auditoria`→vermelho/ShieldCheck, `grow`→verde/TrendingUp).
+- `RegistrarExecucaoPanel` reaproveita `Textarea` + `Calendar` (popover) já existentes; sem novas dependências.
+- Filtros derivam do array em `useMemo`, sem requery.
+- Padrão Radix: nenhum dropdown novo necessário; popover do calendar usa `onCloseAutoFocus={(e)=>e.preventDefault()}` (já é regra do projeto).
 
-### 7. Indicador visual no card do board
+## Itens fora deste escopo (confirmar depois)
 
-Em `BoardCard.tsx` e `ClienteCard.tsx`, adicionar um mini-indicador discreto: ícone de checklist + `3/12` quando o cliente tiver itens. Sem poluir o card.
+- Notificações automáticas de itens atrasados (entra na próxima iteração se quiser).
+- Edição em massa de prazos.
+- Exportar plano de sucesso em PDF.
 
-## O que **não** está no escopo agora
+## Próximo passo após aprovação
 
-- Subitens dentro de itens de checklist (deixo previsto no schema mas só ativo se fizer sentido pelo seu processo)
-- Cadência/recorrência (você escolheu lista única)
-- Aplicação em massa retroativa (você prefere botão manual por card)
-- Notificações automáticas em itens vencidos (pode ser feito num passo seguinte)
+Antes de codar, vou pedir que você me envie a **lista exata de etapas do seu processo de CS** com:
+- Nome
+- Categoria
+- Prazo em dias após entrada (ex.: 7, 14, 30…)
+- Cadência (única / semanal / quinzenal / mensal / trimestral) e quantas ocorrências
 
-## Próximo passo
-
-Quando você aprovar este plano e me **mandar a lista do processo de CS** (itens em ordem), eu já populo o `cliente_checklist_template` direto no INSERT inicial — assim o sistema já nasce com seu processo padrão funcionando. Se preferir, deixo o template vazio e você cadastra manualmente na tela de Configurações depois.
-
-## Arquivos afetados
-
-**Novos:**
-- migration SQL (2 tabelas + RLS)
-- `src/hooks/useClienteChecklist.ts`
-- `src/hooks/useClienteChecklistTemplate.ts`
-- `src/components/clientes/detail/ClienteChecklistSection.tsx`
-- `src/components/clientes/ClienteChecklistTemplateConfig.tsx`
-
-**Editados:**
-- `src/components/clientes/detail/ClienteDetailTabs.tsx` (adicionar seção)
-- `src/components/clientes/modals/ClienteFormModal.tsx` (toggle + aplicação inicial)
-- `src/pages/Configuracoes.tsx` (aba do template)
-- `src/components/clientes/board/BoardCard.tsx` (indicador)
-- `src/components/clientes/ClienteCard.tsx` (indicador)
+Assim eu já populo o template padrão direto no banco.
