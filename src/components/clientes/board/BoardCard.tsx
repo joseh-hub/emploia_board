@@ -40,6 +40,10 @@ export function BoardCard({ cliente, onView, isDragging }: BoardCardProps) {
     ? cliente.responsavelTecnico 
     : [];
 
+  const { data: counts } = useClientesChecklistCounts();
+  const checklist = counts?.[cliente.id];
+  const checklistDone = checklist && checklist.total > 0 && checklist.completed === checklist.total;
+
   return (
     <Card
       draggable
