@@ -79,7 +79,24 @@ export function BoardCard({ cliente, onView, isDragging }: BoardCardProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-end justify-end pt-3 mt-1 border-t border-zinc-800/60 gap-1">
+        <div className="flex items-center justify-between pt-3 mt-1 border-t border-zinc-800/60 gap-1">
+          {/* Checklist progress */}
+          {checklist && checklist.total > 0 ? (
+            <div
+              className={cn(
+                "flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md",
+                checklistDone
+                  ? "text-emerald-400 bg-emerald-500/10"
+                  : "text-zinc-400 bg-zinc-800/60"
+              )}
+              title={`${checklist.completed}/${checklist.total} itens concluídos`}
+            >
+              <ListChecks className="h-3 w-3" />
+              <span>{checklist.completed}/{checklist.total}</span>
+            </div>
+          ) : (
+            <span />
+          )}
           {/* Avatars */}
           {responsaveis.length > 0 ? (
             <div className="flex items-center">
