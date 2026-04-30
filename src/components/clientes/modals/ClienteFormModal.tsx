@@ -28,6 +28,9 @@ import {
 } from "@/components/ui/select";
 import { Cliente, useCreateCliente, useUpdateCliente } from "@/hooks/useClientes";
 import { useBoardColumns } from "@/hooks/useBoardColumns";
+import { useApplyDefaultChecklistToCliente } from "@/hooks/useClienteChecklist";
+import { Switch } from "@/components/ui/switch";
+import { ListChecks } from "lucide-react";
 
 const clienteSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100, "Nome muito longo"),
