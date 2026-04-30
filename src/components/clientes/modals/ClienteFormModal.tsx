@@ -138,7 +138,7 @@ export function ClienteFormModal({
           hs_inadimplencia: data.hs_inadimplencia,
         });
       } else {
-        await createCliente.mutateAsync({
+        const created = await createCliente.mutateAsync({
           name: data.name,
           cnpj: data.cnpj,
           Tipo: data.Tipo,
@@ -151,6 +151,14 @@ export function ClienteFormModal({
           hs_suporte: data.hs_suporte,
           hs_inadimplencia: data.hs_inadimplencia,
         });
+        if (applyChecklist && created?.id) {
+          // Best-effort: don't block creation if template is empty
+          try {
+            await applyDefaultChecklist.mutateAsync(created.id);
+          } catch {
+            /* template vazio ou erro silencioso */
+          }
+        }
       }
       onOpenChange(false);
     } catch (error) {
