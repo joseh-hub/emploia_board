@@ -89,7 +89,13 @@ export function ClienteChecklistTemplateConfig() {
 }
 
 function ClusterTemplateEditor({ cluster }: { cluster: Cluster }) {
-  const { data: items = [] } = useClienteChecklistTemplate(cluster);
+  const { data: rawItems = [] } = useClienteChecklistTemplate(cluster);
+  const items = [...rawItems].sort((a, b) => {
+    const da = a.dias_offset ?? 0;
+    const db = b.dias_offset ?? 0;
+    if (da !== db) return da - db;
+    return (a.position ?? 0) - (b.position ?? 0);
+  });
   const addItem = useAddTemplateItem();
   const updateItem = useUpdateTemplateItem();
   const deleteItem = useDeleteTemplateItem();
