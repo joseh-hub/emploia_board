@@ -211,6 +211,10 @@ export function ClienteDetailModal({
                     <ClienteProjetosTab clienteId={cliente.id} />
                   </TabsContent>
 
+                  <TabsContent value="checklist" className="mt-0">
+                    <ClienteChecklistSection clienteId={cliente.id} />
+                  </TabsContent>
+
                   <TabsContent value="comments" className="mt-0">
                     <CommentsSection clienteId={cliente.id} />
                   </TabsContent>
