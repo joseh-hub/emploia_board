@@ -87,12 +87,21 @@ export function BoardCard({ cliente, onView, isDragging }: BoardCardProps) {
                 "flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md",
                 checklistDone
                   ? "text-emerald-400 bg-emerald-500/10"
+                  : checklist.overdue > 0
+                  ? "text-rose-300 bg-rose-500/10"
                   : "text-zinc-400 bg-zinc-800/60"
               )}
-              title={`${checklist.completed}/${checklist.total} itens concluídos`}
+              title={
+                checklist.overdue > 0
+                  ? `${checklist.overdue} item(ns) atrasado(s) • ${checklist.completed}/${checklist.total} concluídos`
+                  : `${checklist.completed}/${checklist.total} itens concluídos`
+              }
             >
               <ListChecks className="h-3 w-3" />
               <span>{checklist.completed}/{checklist.total}</span>
+              {checklist.overdue > 0 && !checklistDone && (
+                <span className="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-rose-400" />
+              )}
             </div>
           ) : (
             <span />

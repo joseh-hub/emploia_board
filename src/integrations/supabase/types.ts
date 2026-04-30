@@ -312,34 +312,46 @@ export type Database = {
       }
       cliente_checklist_items: {
         Row: {
+          categoria: string
           cliente_id: number
           completed_at: string | null
           completed_by: string | null
           concluido: boolean
           created_at: string
+          due_date: string | null
+          executado_em: string | null
           id: string
+          nota: string | null
           position: number
           texto: string
           updated_at: string
         }
         Insert: {
+          categoria?: string
           cliente_id: number
           completed_at?: string | null
           completed_by?: string | null
           concluido?: boolean
           created_at?: string
+          due_date?: string | null
+          executado_em?: string | null
           id?: string
+          nota?: string | null
           position?: number
           texto: string
           updated_at?: string
         }
         Update: {
+          categoria?: string
           cliente_id?: number
           completed_at?: string | null
           completed_by?: string | null
           concluido?: boolean
           created_at?: string
+          due_date?: string | null
+          executado_em?: string | null
           id?: string
+          nota?: string | null
           position?: number
           texto?: string
           updated_at?: string
@@ -348,22 +360,34 @@ export type Database = {
       }
       cliente_checklist_template: {
         Row: {
+          cadencia: string
+          categoria: string
           created_at: string
+          dias_offset: number
           id: string
+          ocorrencias: number
           position: number
           texto: string
           updated_at: string
         }
         Insert: {
+          cadencia?: string
+          categoria?: string
           created_at?: string
+          dias_offset?: number
           id?: string
+          ocorrencias?: number
           position?: number
           texto: string
           updated_at?: string
         }
         Update: {
+          cadencia?: string
+          categoria?: string
           created_at?: string
+          dias_offset?: number
           id?: string
+          ocorrencias?: number
           position?: number
           texto?: string
           updated_at?: string
