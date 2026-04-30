@@ -1,113 +1,100 @@
 ## Objetivo
 
-Transformar o Checklist de CS de uma lista simples para um **plano de sucesso temporal**, onde cada etapa tem prazo automático contado a partir da entrada do cliente, espaço para registrar o que aconteceu, e uma UX que destaca atrasos, próximos passos e histórico.
+Transformar o template de checklist único em **três templates** (Cluster B, C e D) e popular cada um com o calendário de CS d0→d+365 que você passou. Quando o checklist for aplicado a um cliente, o sistema escolhe o template automaticamente baseado no campo `Tipo` do cliente em `metadata_clientes`.
 
-## O que muda na visão do usuário
+## Como vai funcionar para o usuário
 
-**No card do cliente (aba Checklist):**
-- Cada item exibe **data prevista** (ex.: "Vence em 7 dias" / "Atrasado há 3 dias" / "Concluído em 15/05") calculada a partir de uma data-base do cliente.
-- Botão **"Registrar execução"** abre um pequeno painel inline para descrever **o que aconteceu** (notas em texto livre), data real de execução e quem participou.
-- Itens concluídos mostram resumo da nota (com expandir).
-- Filtros rápidos no topo: **Atrasados / Esta semana / Próximos / Concluídos**.
-- Indicador visual: barra colorida na lateral do item (vermelho = atrasado, âmbar = vence em ≤ 3 dias, verde = ok, cinza = futuro).
+**Configurações → CS Checklist**
+- Aparece um seletor de cluster no topo: `[Cluster B] [Cluster C] [Cluster D]`
+- Cada aba mostra o template daquele cluster com seus itens (já populados pelo seu calendário)
+- Editar/adicionar/remover itens é independente por cluster
+- Itens condicionais (ex.: "AI Assessment se contratado", "Uísque se up-sell") aparecem com badge **Opcional** em cinza
 
-**Na configuração do template (Configurações):**
-- Cada item do template ganha campo **"Prazo (dias após entrada)"** — ex.: 7, 14, 30, 90.
-- Campo opcional **"Cadência"**: única, semanal, quinzenal, mensal, trimestral (gera automaticamente as próximas N ocorrências).
-- Campo opcional **"Categoria"** (Reunião, QBR, Report, Auditoria, Grow, Outro) com ícone/cor.
-- Drag-and-drop para ordenar.
-- Preview lateral mostrando como ficaria a timeline para um cliente novo.
+**No card do cliente → Aplicar checklist padrão**
+- Lê o campo `Tipo` do cliente
+- Aplica automaticamente o template do cluster correspondente
+- Se o cliente não tiver Tipo definido, mostra um seletor antes de aplicar
+- Reuniões recorrentes são expandidas em ocorrências numeradas (1ª, 2ª, 3ª… Reunião Semanal) com `due_date` calculada
 
-**No mini indicador do board:**
-- Mantém `3/12` mas adiciona ponto vermelho se houver item atrasado.
+## Mudança de schema
 
-## Modelo de dados (alterações)
+**`cliente_checklist_template`** ganha:
+- `cluster` text NOT NULL DEFAULT 'B' — `'B'`, `'C'` ou `'D'`
+- `opcional` boolean NOT NULL DEFAULT false — marca itens condicionais
+- Índice em `(cluster, position)`
 
-**`cliente_checklist_template`** — adicionar:
-- `dias_offset` integer (prazo em dias após data-base; default 0)
-- `cadencia` text (`unica` | `semanal` | `quinzenal` | `mensal` | `trimestral`; default `unica`)
-- `ocorrencias` integer (qtd para cadências recorrentes; default 1)
-- `categoria` text (`reuniao` | `qbr` | `report` | `auditoria` | `grow` | `outro`; default `outro`)
+**`cliente_checklist_items`** ganha:
+- `opcional` boolean NOT NULL DEFAULT false — herdado do template para mostrar badge
 
-**`cliente_checklist_items`** — adicionar:
-- `due_date` date (data prevista calculada na criação)
-- `nota` text (descrição do que aconteceu na execução)
-- `executado_em` date (data real de execução, opcional, default = `completed_at`)
-- `categoria` text (espelha do template)
+Itens existentes ficam com `cluster='B'` (você já só tem 1 de teste).
 
-**Data-base do cliente:** usar `metadata_clientes.data_inicio` quando existir; senão `created_at` do registro. Não há nova coluna no cliente.
+## Conteúdo populado em cada cluster
 
-## Lógica de geração
+A tabela abaixo mostra o que cada cluster recebe. Marquei com **(opc)** os condicionais.
 
-Ao aplicar template (criação automática ou botão manual):
-1. Buscar data-base do cliente.
-2. Para cada item do template:
-   - Se `cadencia = unica`: criar 1 item com `due_date = data_base + dias_offset`.
-   - Se recorrente: criar `ocorrencias` itens com offsets crescentes (ex.: semanal partindo de `dias_offset`, somando 7 dias por ocorrência), numerando o texto (`1ª Reunião Semanal`, `2ª Reunião Semanal`, …).
-3. Persistir `categoria` e `position` sequencial.
-
-## UI/UX detalhada
-
-### Aba "Checklist" no card do cliente
 ```text
-[Filtros: Todos | Atrasados (2) | Esta semana | Próximos | Concluídos]
-[Progresso: ████░░░░ 4/12 (33%)]
-
-[●] 1ª Reunião Semanal              📅 Vence em 7 dias    [Registrar]
-    └ Categoria: Reunião
-
-[✓] Kickoff                          ✅ Concluído 02/05
-    Nota: "Cliente alinhou objetivos Q2, decidiu focar em ..."  [expandir]
-
-[●] QBR                              ⚠ Atrasado há 3 dias  [Registrar]
+                                          B    C    D
+Kick-off + alinhamento de metas           d0   d0   d0
+Reunião Semanal (×3 nas semanas 1-3)      ×    ×    —     [semanal × 3]
+Reunião Quinzenal Mês 1                   d+15 d+15 —
+Onboarding check + dados mensais          d+30 d+30 —
+Relatório assíncrono inicial              —    —    d+30
+Reuniões Mês 2 (quinzenal × 2 / mensal)   ×2   ×1   —
+Checkpoint mensal Mês 2                   d+60 d+60 —
+Checkpoint trimestral Mês 3               d+90 d+90 d+90
+1º QBR                                    d+90 d+90 d+90 (D = PDF/Loom)
+Estudo de Nicho (entregue no QBR)         d+90 d+90 —
+Reuniões Mês 4-5 (×2 cada)                ×4   ×4   —
+Checkpoint mensal Mês 4                   d+120 d+120 —
+Estudo de Concorrentes                    d+120 d+120 —
+Checkpoint trimestral Mês 6               d+180 d+180 d+180
+2º QBR + midyear review                   d+180 d+180 d+180 (D = PDF/Loom)
+Roadmap de IA                             d+180 d+180 d+180 (opc)
+Presente: Uísque                          d+180 —    —     (opc)
+Reuniões Mês 7-8                          ×4   ×2   —
+Checkpoint mensal Mês 7                   d+210 d+210 —
+Checkpoint trimestral Mês 9               d+270 d+270 d+270
+3º QBR                                    d+270 d+270 d+270 (D = PDF/Loom)
+AI Assessment                             d+270 d+270 d+270 (opc)
+Reuniões Mês 10-11                        ×4   ×2   —
+Checkpoint mensal Mês 10                  d+300 d+300 —
+Planejamento do aniversário               d+330 —    —
+Checkpoint trimestral Mês 12              d+360 d+360 d+360
+4º QBR + Aniversário                      d+360 d+360 d+360
 ```
 
-### Painel "Registrar execução" (inline, abre abaixo do item)
-- Textarea para nota (markdown simples / mention).
-- Date picker para data real (default = hoje).
-- Botão "Concluir e salvar".
-- Cancelar fecha sem alterar.
+Total estimado: **~22 itens em B**, **~17 em C**, **~7 em D**.
 
-### Configuração do template
-Tabela com colunas: ordem · texto · categoria (badge) · prazo (dias) · cadência · ações. Drag handle à esquerda. Linha de adição rápida no rodapé com todos os campos.
+## Mudanças no código
 
-## Componentes / arquivos
+**`src/lib/checklistDates.ts`**
+- Adicionar `type Cluster = 'B' | 'C' | 'D'`
+- `expandTemplate` passa a aceitar `opcional` e copiá-lo no expanded item
 
-**Novos**
-- `src/components/clientes/detail/ClienteChecklistItemRow.tsx` — linha rica com badges, prazo e painel de registro.
-- `src/components/clientes/detail/ClienteChecklistFilters.tsx` — filtros + contadores.
-- `src/components/clientes/detail/RegistrarExecucaoPanel.tsx` — formulário inline (nota + data).
-- `src/lib/checklistDates.ts` — helpers `computeDueLabel`, `getDueStatus`, `expandTemplate`.
+**`src/hooks/useClienteChecklistTemplate.ts`**
+- `useClienteChecklistTemplate(cluster)` — query passa a filtrar por cluster
+- `useAddTemplateItem` / `useUpdateTemplateItem` recebem `cluster` e `opcional`
 
-**Editados**
-- `src/components/clientes/detail/ClienteChecklistSection.tsx` — usa novos componentes, filtros, agrupamento.
-- `src/components/clientes/ClienteChecklistTemplateConfig.tsx` — campos de offset, cadência, categoria; preview.
-- `src/hooks/useClienteChecklist.ts` — `useApplyDefaultChecklistToCliente` passa a calcular `due_date` e expandir cadências; `useToggleClienteChecklistItem` aceita `nota` e `executado_em`.
-- `src/hooks/useClienteChecklistTemplate.ts` — CRUD com novos campos.
-- `src/components/clientes/board/BoardCard.tsx` — adicionar ponto de alerta se houver atrasados (já recebe `useClientesChecklistCounts`; estender para também retornar `overdue_count`).
-- `src/hooks/useClientesChecklistCounts.ts` — incluir contagem de atrasados.
+**`src/hooks/useClienteChecklist.ts`**
+- `useApplyDefaultChecklistToCliente` lê `metadata_clientes.Tipo`, mapeia para cluster (B/C/D — fallback B), busca template daquele cluster, expande e insere
 
-## Detalhes técnicos
+**`src/components/clientes/ClienteChecklistTemplateConfig.tsx`**
+- Adicionar `Tabs` (B / C / D) no topo, cada aba renderiza a mesma UI atual filtrada por cluster
+- Adicionar checkbox/switch "Opcional" na linha de novo item e na linha de edição
+- Mostrar badge cinza "Opcional" em itens marcados
 
-- Migração SQL adiciona colunas com defaults (não quebra dados existentes; itens antigos ficam sem `due_date`, exibidos como "sem prazo").
-- Cálculo de `due_date` feito no client (TypeScript) ao aplicar template — evita trigger e mantém lógica visível.
-- `categoria` mapeada para cor/ícone num único objeto em `checklistDates.ts` (`reuniao`→azul/Calendar, `qbr`→roxo/BarChart, `report`→âmbar/FileText, `auditoria`→vermelho/ShieldCheck, `grow`→verde/TrendingUp).
-- `RegistrarExecucaoPanel` reaproveita `Textarea` + `Calendar` (popover) já existentes; sem novas dependências.
-- Filtros derivam do array em `useMemo`, sem requery.
-- Padrão Radix: nenhum dropdown novo necessário; popover do calendar usa `onCloseAutoFocus={(e)=>e.preventDefault()}` (já é regra do projeto).
+**`src/components/clientes/detail/ClienteChecklistItemRow.tsx`**
+- Mostrar badge "Opcional" antes do nome quando `opcional=true`
 
-## Itens fora deste escopo (confirmar depois)
+**`src/components/clientes/detail/ClienteChecklistSection.tsx`**
+- Botão "Aplicar checklist padrão" mostra qual cluster vai usar (lido do cliente). Se não houver Tipo, abre um pequeno popover pedindo para escolher.
 
-- Notificações automáticas de itens atrasados (entra na próxima iteração se quiser).
-- Edição em massa de prazos.
-- Exportar plano de sucesso em PDF.
+## Population dos itens
 
-## Próximo passo após aprovação
+Feita via seed (SQL `INSERT`) logo após a migration do schema. Como hoje só existe 1 item de teste no template, vou apagar ele antes de popular para evitar duplicata.
 
-Antes de codar, vou pedir que você me envie a **lista exata de etapas do seu processo de CS** com:
-- Nome
-- Categoria
-- Prazo em dias após entrada (ex.: 7, 14, 30…)
-- Cadência (única / semanal / quinzenal / mensal / trimestral) e quantas ocorrências
+## Fora do escopo
 
-Assim eu já populo o template padrão direto no banco.
+- Re-aplicar o novo template a clientes que já têm checklist gerado (eles continuam como estão; quem quiser refaz manualmente)
+- Editor visual de "qual item vai pra qual cluster simultaneamente" — cada cluster é editado independentemente
+- Notificação automática de itens próximos do prazo
